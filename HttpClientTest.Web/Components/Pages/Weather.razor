@@ -1,0 +1,79 @@
+﻿@page "/weather"
+@rendermode InteractiveServer
+
+@inject WeatherApiClient WeatherApi
+
+<PageTitle>Weather</PageTitle>
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data loaded from a backend API service.</p>
+
+<InputNumber disabled="@(_isRunning)" @bind-Value=_requestCount></InputNumber> requests, sleep
+<InputNumber disabled="@(_isRunning)" @bind-Value=_sleepDuration></InputNumber> ms
+<InputCheckbox disabled="@(_isRunning)" @bind-Value=_useBetter>Use better</InputCheckbox>
+<button class="btn btn-primary" disabled="@(_isRunning)" @onclick=LoadMoreWeather>Load a lot or weather (@_iterations)</button>
+<button class="btn btn-secondary" disabled="@(!_isRunning)" @onclick="() => _isRunning = false">Stop</button>
+
+  @if (forecasts == null)
+  {
+      <p><em>Loading...</em></p>
+  }
+  else
+  {
+      <table class="table">
+          <thead>
+              <tr>
+                  <th>Date</th>
+                  <th>Temp. (C)</th>
+                  <th>Temp. (F)</th>
+                  <th>Summary</th>
+              </tr>
+          </thead>
+          <tbody>
+        @foreach (var forecast in forecasts)
+        {
+                    <tr>
+                        <td>@forecast.Date.ToShortDateString()</td>
+                        <td>@forecast.TemperatureC</td>
+                        <td>@forecast.TemperatureF</td>
+                        <td>@forecast.Summary</td>
+                    </tr>
+        }
+          </tbody>
+      </table>
+  }
+
+@code {
+  private WeatherForecast[]? forecasts;
+  private int _iterations = 0;
+  private int _sleepDuration = 1000;
+  private bool _isRunning = false;
+  private int _requestCount = 1000;
+  private bool _useBetter = false;
+
+  protected override async Task OnInitializedAsync()
+  {
+    forecasts = await WeatherApi.GetWeatherAsync();
+  }
+
+  private async Task LoadMoreWeather()
+  {
+    _isRunning = true;
+
+    for (_iterations = 0; _iterations < _requestCount; _iterations++)
+    {
+      if (_useBetter)
+        forecasts = await new WeatherApiClientBetter().GetWeatherAsync();
+      else
+        forecasts = await WeatherApiClientBad.GetWeatherAsync();
+
+      await Task.Delay(_sleepDuration);
+
+      StateHasChanged();
+
+      if (!_isRunning)
+        break;
+    }
+    }
+}
